@@ -2,9 +2,9 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import express, { Request, Response } from "express";
 import { z } from "zod";
-import { userInputSchema, userSchema } from "./db/schema";
-import { hashPassword } from "./utils/utils";
-import { insertIntoUsers } from "./db/db-utils";
+import { userSignupSchema, userSchema } from "./db/schema";
+import { comparePassword, generateJWT, hashPassword } from "./utils/utils";
+import { getUserInfo, insertIntoUsers } from "./db/db-utils";
 
 const db = drizzle(process.env.DATABASE_URL!);
 const app = express();
@@ -18,7 +18,7 @@ Sign-up Flow:
 
 async function handleSignUp(req: Request, res: Response): Promise<any> {
   try {
-    let validation = userInputSchema.safeParse(req.body);
+    const validation = userSignupSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({ error: validation.error?.format() });
     }
@@ -26,8 +26,10 @@ async function handleSignUp(req: Request, res: Response): Promise<any> {
     const { password, ...rest } = validation.data;
     const hashedPassword = await hashPassword(password);
 
-    const data = await insertIntoUsers({ ...rest, password: hashedPassword });
-    return res.status(201).json({ status: "success", message: data });
+    await insertIntoUsers({ ...rest, password: hashedPassword });
+    return res
+      .status(201)
+      .json({ status: "success", message: "Your account is created" });
   } catch (error: any) {
     console.log(error);
     console.error("Sign-up Error:", error);
@@ -50,4 +52,34 @@ Login Flow:
 2. The backend verifies the credentials.
 3. If valid, a JWT token is returned for authentication.
 */
+const userLogin = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+export type userLogin = z.infer<typeof userLogin>;
+async function handleLogin(req: Request, res: Response): Promise<any> {
+  try {
+    const userCredentials = userLogin.safeParse(req.body);
+    if (!userCredentials.success) {
+      return res.status(400).json({ error: userCredentials.error?.format() });
+    }
+    const userData = await getUserInfo(userCredentials.data);
+    const validUser = await comparePassword(
+      userCredentials.data.password,
+      userData.password
+    );
+    if (!validUser) {
+      return res
+        .status(401)
+        .json({ status: "failure", message: "Invalid credentials." });
+    }
+    return res.status(200).json({
+      status: "success",
+      token: generateJWT({ id: userData.id, email: userData.email }),
+    });
+  } catch (error: any) {
+    return res.status(401).json({ status: "failure", message: error.message });
+  }
+}
+app.get("/login", handleLogin);
 app.listen(3000, () => console.log("Server running on port 3000"));

@@ -18,7 +18,7 @@ export const userSchema = createInsertSchema(users, {
   email: () => z.string().email(),
   password: () => z.string().min(60, "Invalid hashed password"),
 });
-export const userInputSchema = userSchema.extend({
+export const userSignupSchema = userSchema.extend({
   password: z.string().min(8, "Passwords must be atleast 8 characters long"),
 });
 
