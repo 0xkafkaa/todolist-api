@@ -18,30 +18,28 @@ Sign-up Flow:
 
 async function handleSignUp(req: Request, res: Response): Promise<any> {
   try {
-    //    the user signs up using their credentials
-    //   const { name, username, email, password } = req.body;
     let validation = userInputSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({ error: validation.error?.format() });
     }
 
-    // hash password
     const { password, ...rest } = validation.data;
     const hashedPassword = await hashPassword(password);
 
-    // insert into db
-    const data = await insertIntoUsers({ ...rest, password });
-    return res.status(200).json({ status: "sucess", message: data });
+    const data = await insertIntoUsers({ ...rest, password: hashedPassword });
+    return res.status(201).json({ status: "success", message: data });
   } catch (error: any) {
     console.log(error);
+    console.error("Sign-up Error:", error);
     if (error.message.includes("User already exists.")) {
       return res
         .status(400)
         .json({ status: "failure", message: error.message });
     }
-    return res
-      .status(500)
-      .json({ status: "error", message: "Internal Server Error" });
+    return res.status(500).json({
+      status: "error",
+      message: "Something went wrong. Please try again.",
+    });
   }
 }
 
