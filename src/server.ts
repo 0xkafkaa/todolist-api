@@ -1,10 +1,11 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { userSignupSchema, userSchema } from "./db/schema";
 import { comparePassword, generateJWT, hashPassword } from "./utils/utils";
 import { getUserInfo, insertIntoUsers } from "./db/db-utils";
+import jwt from "jsonwebtoken";
 
 const db = drizzle(process.env.DATABASE_URL!);
 const app = express();
@@ -75,11 +76,54 @@ async function handleLogin(req: Request, res: Response): Promise<any> {
     }
     return res.status(200).json({
       status: "success",
-      token: generateJWT({ id: userData.id, email: userData.email }),
+      token: generateJWT({
+        id: userData.id,
+        email: userData.email,
+        username: userData.username,
+      }),
     });
   } catch (error: any) {
     return res.status(401).json({ status: "failure", message: error.message });
   }
 }
 app.get("/login", handleLogin);
+/*
+Middleware flow:
+1. Check the jwt provided in the header
+2. If the token is valid
+*/
+interface AuthRequest extends Request {
+  user?: any;
+}
+const authMiddleware = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  try {
+    const secret = process.env.JWTSECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET is not set in the environment variables");
+    }
+    const decoded = jwt.verify(token, String(process.env.JWTSECRET));
+    req.user = decoded;
+    next();
+  } catch (error: any) {
+    return res
+      .status(403)
+      .json({ message: "Invalid token", error: error.message });
+  }
+};
+
+/*
+Get Tasks flow:
+*/
+
+/*
+Create Tasks flow:
+*/
 app.listen(3000, () => console.log("Server running on port 3000"));
