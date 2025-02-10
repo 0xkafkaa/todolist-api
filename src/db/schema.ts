@@ -31,3 +31,5 @@ export const tasks = pgTable("tasks", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
 });
+
+export const tasksSchema = createInsertSchema(tasks);

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { users, userSchema } from "./schema";
+import { tasks, users } from "./schema";
 import { userLogin } from "../server";
 import { eq } from "drizzle-orm";
 const db = drizzle(process.env.DATABASE_URL!);
@@ -10,10 +10,7 @@ export async function insertIntoUsers(
   userData: typeof users.$inferInsert
 ): Promise<void> {
   try {
-    const data = await db
-      .insert(users)
-      .values(userData)
-      .returning({ id: users.id, name: users.name, email: users.email });
+    const data = await db.insert(users).values(userData);
     return;
   } catch (error: any) {
     if (error.message.includes("duplicate key value")) {
@@ -36,6 +33,20 @@ export async function getUserInfo(
       .limit(1);
     if (!data[0]) {
       throw new Error("User didn't sign up");
+    }
+    return data[0];
+  } catch (error: any) {
+    throw new Error(error.message || "Database error");
+  }
+}
+
+export async function insertATask(
+  taskData: typeof tasks.$inferInsert
+): Promise<typeof tasks.$inferInsert> {
+  try {
+    const data = await db.insert(tasks).values(taskData).returning();
+    if (!data[0]) {
+      throw new Error("Can't add invalid task.");
     }
     return data[0];
   } catch (error: any) {

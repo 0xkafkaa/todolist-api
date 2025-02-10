@@ -1,10 +1,15 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
-import express, { NextFunction, Request, Response } from "express";
+import express, {
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response,
+} from "express";
 import { z } from "zod";
-import { userSignupSchema, userSchema } from "./db/schema";
+import { userSignupSchema, userSchema, tasksSchema } from "./db/schema";
 import { comparePassword, generateJWT, hashPassword } from "./utils/utils";
-import { getUserInfo, insertIntoUsers } from "./db/db-utils";
+import { getUserInfo, insertATask, insertIntoUsers } from "./db/db-utils";
 import jwt from "jsonwebtoken";
 
 const db = drizzle(process.env.DATABASE_URL!);
@@ -95,27 +100,27 @@ Middleware flow:
 interface AuthRequest extends Request {
   user?: any;
 }
-const authMiddleware = (
+const authMiddleware: RequestHandler = (
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized" });
+    res.status(401).json({ message: "Unauthorized" });
+    return;
   }
   try {
-    const secret = process.env.JWTSECRET;
+    const secret = String(process.env.JWTSECRET);
     if (!secret) {
       throw new Error("JWT_SECRET is not set in the environment variables");
     }
-    const decoded = jwt.verify(token, String(process.env.JWTSECRET));
+    const decoded = jwt.verify(token, secret);
     req.user = decoded;
     next();
   } catch (error: any) {
-    return res
-      .status(403)
-      .json({ message: "Invalid token", error: error.message });
+    res.status(403).json({ message: "Invalid token", error: error.message });
+    return;
   }
 };
 
@@ -125,5 +130,30 @@ Get Tasks flow:
 
 /*
 Create Tasks flow:
+- Authenticate the user using the middleware
+- Insert a task in the db
+- Return a response
 */
+async function handlePostTasks(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    const validations = tasksSchema.safeParse({ ...req.body, userId: user.id });
+    if (!validations.success) {
+      res.status(400).json({ status: "failure", message: "Invalid task." });
+      return;
+    }
+    const newTask = validations.data;
+    const task = await insertATask(newTask!);
+    res
+      .status(201)
+      .json({ status: "success", message: "Task created.", data: task });
+    return;
+  } catch (error) {
+    res
+      .status(400)
+      .json({ status: "failure", message: "Internal server error." });
+    return;
+  }
+}
+app.post("/createTask", authMiddleware, handlePostTasks);
 app.listen(3000, () => console.log("Server running on port 3000"));
