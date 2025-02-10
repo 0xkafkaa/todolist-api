@@ -10,6 +10,7 @@ import { z } from "zod";
 import { userSignupSchema, userSchema, tasksSchema } from "./db/schema";
 import { comparePassword, generateJWT, hashPassword } from "./utils/utils";
 import {
+  deleteTaskByID,
   getAllTasks,
   getTaskByID,
   getUserInfo,
@@ -200,11 +201,38 @@ async function handleUpdateTask(
 
     await getTaskByID(taskId, user.id);
     res.status(200).json({ status: "success", message: "Task Completed." });
+    return;
   } catch (error: any) {
     res.status(500).json({ status: "failure", message: error.message });
+    return;
   }
 }
-
 app.patch("/updateTask", authMiddleware, handleUpdateTask);
 
+/*
+Delete task flow:
+- Authenticate the user using the middleware
+- Select the task based on the taskID
+- Delete it
+- Return a response
+*/
+async function handleDeleteTask(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const user = req.user;
+    const { taskId } = req.body;
+    if (!taskId) throw new Error("A TaskId is required.");
+    await deleteTaskByID(taskId, user.id);
+    res
+      .status(200)
+      .json({ status: "success", message: "Task has been deleted." });
+    return;
+  } catch (error: any) {
+    res.status(500).json({ status: "failure", message: error.message });
+    return;
+  }
+}
+app.delete("/deleteTask", authMiddleware, handleDeleteTask);
 app.listen(3000, () => console.log("Server running on port 3000"));

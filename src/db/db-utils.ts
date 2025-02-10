@@ -94,3 +94,23 @@ export async function getTaskByID(
     throw new Error(error.message);
   }
 }
+export async function deleteTaskByID(
+  taskId: string,
+  userId: string
+): Promise<void> {
+  try {
+    const task = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), eq(tasks.id, taskId)))
+      .limit(1);
+    if (!task[0]) {
+      throw new Error("No such task.");
+    }
+
+    await db.delete(tasks).where(eq(tasks.id, taskId));
+    return;
+  } catch (error: any) {
+    throw new Error(error.message);
+  }
+}
