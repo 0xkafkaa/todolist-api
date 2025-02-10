@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: my_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    image: todolist-api  # <-- Use the existing image instead of rebuilding
+    container_name: my_backend
+    restart: always
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+
+  frontend:
+    image: my-vite-react-app  # Use your built frontend image
+    container_name: my_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "4000:80"  # Maps frontend container port 80 to localhost:4000
+
+volumes:
+  postgres_data:

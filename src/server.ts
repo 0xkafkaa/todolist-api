@@ -18,10 +18,11 @@ import {
   insertIntoUsers,
 } from "./db/db-utils";
 import jwt from "jsonwebtoken";
-
+import cors from "cors";
 const db = drizzle(process.env.DATABASE_URL!);
 const app = express();
 app.use(express.json());
+app.use(cors());
 /* 
 Sign-up Flow:
 1. The user signs up using their credentials (email, password, etc.).
@@ -98,7 +99,7 @@ async function handleLogin(req: Request, res: Response): Promise<any> {
     return res.status(401).json({ status: "failure", message: error.message });
   }
 }
-app.get("/login", handleLogin);
+app.post("/login", handleLogin);
 /*
 Middleware flow:
 1. Check the jwt provided in the header
