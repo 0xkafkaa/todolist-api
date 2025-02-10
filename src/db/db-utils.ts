@@ -53,3 +53,17 @@ export async function insertATask(
     throw new Error(error.message || "Database error");
   }
 }
+
+export async function getAllTasks(
+  userId: string
+): Promise<(typeof tasks.$inferSelect)[]> {
+  try {
+    const data = await db.select().from(tasks).where(eq(tasks.userId, userId));
+    if (!data) {
+      throw new Error("Invalid user ID");
+    }
+    return data;
+  } catch (error: any) {
+    throw new Error(error.message);
+  }
+}

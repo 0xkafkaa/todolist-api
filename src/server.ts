@@ -9,7 +9,12 @@ import express, {
 import { z } from "zod";
 import { userSignupSchema, userSchema, tasksSchema } from "./db/schema";
 import { comparePassword, generateJWT, hashPassword } from "./utils/utils";
-import { getUserInfo, insertATask, insertIntoUsers } from "./db/db-utils";
+import {
+  getAllTasks,
+  getUserInfo,
+  insertATask,
+  insertIntoUsers,
+} from "./db/db-utils";
 import jwt from "jsonwebtoken";
 
 const db = drizzle(process.env.DATABASE_URL!);
@@ -126,8 +131,25 @@ const authMiddleware: RequestHandler = (
 
 /*
 Get Tasks flow:
+- Authenticate the user using the middleware
+- Get all the tasks
+- Return a response
 */
-
+async function handleGetTasks(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    const tasks = await getAllTasks(user.id);
+    res.status(200).json({ status: "success", data: tasks });
+    return;
+  } catch (error: any) {
+    res.status(401).json({
+      status: "failure",
+      message: "Invalid user",
+      error: error.message,
+    });
+  }
+}
+app.get("/getTasks", authMiddleware, handleGetTasks);
 /*
 Create Tasks flow:
 - Authenticate the user using the middleware
@@ -150,10 +172,19 @@ async function handlePostTasks(req: AuthRequest, res: Response): Promise<void> {
     return;
   } catch (error) {
     res
-      .status(400)
+      .status(500)
       .json({ status: "failure", message: "Internal server error." });
     return;
   }
 }
 app.post("/createTask", authMiddleware, handlePostTasks);
+
+/*
+Update task flow:
+- Authenticate the user using the middleware
+- Select the task based on the taskID
+- Update its status
+- Return a response
+*/
+
 app.listen(3000, () => console.log("Server running on port 3000"));
