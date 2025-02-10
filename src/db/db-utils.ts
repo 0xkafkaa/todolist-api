@@ -2,7 +2,8 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { tasks, users } from "./schema";
 import { userLogin } from "../server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+
 const db = drizzle(process.env.DATABASE_URL!);
 
 // insert into users table
@@ -63,6 +64,32 @@ export async function getAllTasks(
       throw new Error("Invalid user ID");
     }
     return data;
+  } catch (error: any) {
+    throw new Error(error.message);
+  }
+}
+
+export async function getTaskByID(
+  taskId: string,
+  userId: string
+): Promise<void> {
+  try {
+    const task = await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.userId, userId), eq(tasks.id, taskId)))
+      .limit(1);
+    if (!task[0]) {
+      throw new Error("No such task.");
+    }
+    if (task[0].status == "Completed") {
+      throw new Error("Task already completed");
+    }
+    await db
+      .update(tasks)
+      .set({ status: "Completed" })
+      .where(eq(tasks.id, taskId));
+    return;
   } catch (error: any) {
     throw new Error(error.message);
   }

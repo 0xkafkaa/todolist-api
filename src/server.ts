@@ -11,6 +11,7 @@ import { userSignupSchema, userSchema, tasksSchema } from "./db/schema";
 import { comparePassword, generateJWT, hashPassword } from "./utils/utils";
 import {
   getAllTasks,
+  getTaskByID,
   getUserInfo,
   insertATask,
   insertIntoUsers,
@@ -186,5 +187,24 @@ Update task flow:
 - Update its status
 - Return a response
 */
+async function handleUpdateTask(
+  req: AuthRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const user = req.user;
+    const { taskId, status } = req.body;
+    if (!taskId) throw new Error("A TaskId is required.");
+    if (status !== "Completed" && status !== "Pending")
+      throw new Error("Invalid status.");
+
+    await getTaskByID(taskId, user.id);
+    res.status(200).json({ status: "success", message: "Task Completed." });
+  } catch (error: any) {
+    res.status(500).json({ status: "failure", message: error.message });
+  }
+}
+
+app.patch("/updateTask", authMiddleware, handleUpdateTask);
 
 app.listen(3000, () => console.log("Server running on port 3000"));
