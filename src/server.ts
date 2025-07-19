@@ -22,7 +22,10 @@ import cors from "cors";
 const db = drizzle(process.env.DATABASE_URL!);
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: "https://todo.kafkaa.xyz",  // 👈 allow only your frontend
+  credentials: true                   // 👈 if using cookies or auth headers
+}));
 /* 
 Sign-up Flow:
 1. The user signs up using their credentials (email, password, etc.).
